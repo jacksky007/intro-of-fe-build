@@ -1,0 +1,351 @@
+<!--
+Google IO 2012/2013 HTML5 Slide Template
+
+Authors: Eric Bidelman <ebidel@gmail.com>
+         Luke Mahé <lukem@google.com>
+
+URL: https://code.google.com/p/io-2012-slides
+-->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>前端构建方案简介</title>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="chrome=1">
+  <!--<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">-->
+  <!--<meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+  <!--This one seems to work all the time, but really small on ipad-->
+  <!--<meta name="viewport" content="initial-scale=0.4">-->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="stylesheet" media="all" href="theme/css/default.css">
+  <link rel="stylesheet" media="only screen and (max-device-width: 480px)" href="theme/css/phone.css">
+  <base target="_blank"> <!-- This amazingness opens all links in a new tab. -->
+  <script data-main="js/slides" src="js/require-1.0.8.min.js"></script>
+</head>
+<body style="opacity: 0">
+
+<slides class="layout-widescreen">
+
+  <slide class="logoslide nobackground">
+    <hgroup class="auto-fadein" style="display: flex; width: 100%; height: 100%; align-items: center; justify-content: center;">
+      <h1 data-config-title style="font-size: 3em;"></h1>
+    </hgroup>
+    <article class="flexbox vcenter">
+      <span></span>
+    </article>
+  </slide>
+
+  <slide class="title-slide nobackground">
+    <hgroup>
+      <h2>为什么需要构建？</h2>
+    </hgroup>
+    <article>
+      <ul class="build">
+        <li>源文件不能直接被浏览器使用，比如sass需要生成css</li>
+        <li>源文件因为模块的细分，数量会有很多，如果不进行合并那么打开页面时会有太多的HTTP请求，影响加载速度，比如js</li>
+        <li>很多资源可以依据加载，但有时候我们可能会考虑提前加载以提高页面响应速度，比如angular用到的模板</li>
+        <li>源文件本身比较大，不压缩可能传输时间比较长，html、css、js、img都会有这个问题，尤其是图片</li>
+        <li>配合服务器缓存设置，提高缓存重用性，既可以减少流量成本，也会提高应用的启动速度</li>
+        <li>还有很多原因...</li>
+      </ul>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>构建工具的选择</h2>
+    </hgroup>
+    <article>
+      <ul>
+        <li>make结合各种命令行</li>
+        <li>grunt</li>
+        <li>gulp</li>
+        <li>webpack</li>
+        <li>...</li>
+      </ul>
+      <ul class="build">
+        <li>gulp速度快，而且前几年发展到现在，插件数量已经不比grunt少多少。但是目前的AMD打包插件没有一个对多模块与require.js插件支持得很好，虽然通过努力理论上也可能用于我们的项目，但基于实现成本和进度考虑放弃选择gulp。</li>
+        <li>webpack经过几年的发展已成为前端的几乎万能的构建工具。不过它更适合于前后端彻底分离的前端项目，对于多入口页面的项目，配置起来需要更多工作量。另外，它的上手难度不算低，文档也并不那么详细，需要投入比较多的前期学习和尝试成本才能制定出符合相应项目的构建工具。</li>
+        <li>grunt，老派构建工具，生态圈成熟，插件丰富。不过很多后起之秀（比如上述两个）在不同方面都有超越grunt之处。另外，最近grunt原作者已经表示放弃维护grunt，转而交由jQuery委员会负责维护工作。综合考虑我们当前方案还是基于grunt。</li>
+      </ul>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>sass -> css</h2>
+    </hgroup>
+    <article>
+      <ul>
+        <li>grunt-contrib-sass(基于ruby)成熟稳定，但是需要ruby环境，所以有点慢。</li>
+        <li>grunt-sass(基于C++)，速度快。但是一直以来功能上少于ruby实现，好在最近一段时间之前，其beta版功能已几乎与ruby实现一致。开发环境grunt watch在从grunt-contrib-sass切换为grunt-sass之后，执行时间缩短了80%以上。</li>
+      </ul>
+      <section class="build">
+        <p>不需要生成css文件的sass文件，文件名用下划线"_"作为前缀，这是sass默认行为。</p>
+        <p>grunt-sass在开发模式生成css时添加的sass源文件行号注释时使用文件系统的绝对路径，那么每个人的环境上路径会各不相同，每次提交代码都会有差异，这是个小麻烦。所以执行sass编译成css之后需要做一个小任务，把css文件中的项目目录上层的路径去掉，同时统一使用'/'作为目录分隔符。</p>
+        <p>比如，调整前<br>/* line 3, z:\repo\fe\src\scss\main.scss */</p>
+        <p>调整后<br>/* line 3, src/scss/main.scss */</p>
+      </section>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>js文件合并</h2>
+    </hgroup>
+    <article>
+      <ul class="build">
+        <li>
+          主要配置项跟r.js的一样，参照<br>
+          <a href="https://github.com/requirejs/example-multipage-shim">https://github.com/requirejs/example-multipage-shim</a><br>
+          <a href="https://github.com/jrburke/r.js/blob/master/build/example.build.js">https://github.com/jrburke/r.js/blob/master/build/example.build.js</a>
+        </li>
+        <li>扫描每个功能模块目录下：main.js、index.js以及与目录名同名的文件(比如a/a.js、b/b.js)，用这些文件作为<code>modules</code>，其余不符合这些名字的模块需要手动添加到<code>modules</code>中</li>
+        <li>公用main.js单独作为一个模块，所以上述modules的每一个module中添加<br><code>exclude: ['main']</code><br>避免重复打包</li>
+        <li>所有第三方类库因为项目结构和最终部署路径也单独打包或者不打包，所以把这些类库在<code>paths</code>中映射为<code>empty:</code></li>
+        <li>有个注意地方，不能直接在<code>paths</code>中将main映射为<code>:empty</code>来实现每个应用模块不重复打包main，因为这时候main模块本身不会被打包了</li>
+      </ul>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>cssmin</h2>
+    </hgroup>
+    <article class="build">
+      <p>两点注意</p>
+      <p>默认压缩选项太过激进，本来一直也没问题，在最近做的一个页面出现了有些浏览器无法识别部分样式的问题，所以关闭。<br><code>advanced: false</code></p>
+      <p>默认压缩规则不对ie8做兼容，注意根据项目需要开启。<br><code>compatibility: 'ie8'</code></p>
+      <p>比如默认压缩后<br><code>background:url(***)top left no-repeat;</code></p>
+      <p>开启兼容ie8之后<br><code>background:url(***) top left no-repeat;</code></p>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>imagemin</h2>
+    </hgroup>
+    <article>
+      <ul class="build">
+        <li>imagemin默认配置即可满足大多数项目需求，不作调整</li>
+        <li>imagemin的CPU占用很大，如果图片很多，那么总的执行时间会很长</li>
+        <li>所以根据实际情况要考虑增量处理，即每次只压缩改动的和新加的图片文件</li>
+        <li>理论上css和js也可能随着项目的变大需要增量构建，不过目前这两种文件数量跟图片比还是很少的，所以处理过程比图片短很多</li>
+      </ul>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>uglifyjs</h2>
+    </hgroup>
+    <article>
+      <p>默认设置满足绝大多数项目需要，不做额外设置</p>
+      <p>r.js本身内建了uglifyjs的功能，但我们因为后续的版本控制，不用r.js自带的压缩功能</p>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>htmlmin</h2>
+    </hgroup>
+    <article class="build">
+      <p>要注意的选项很多，参考<br>
+        <a href="https://github.com/kangax/html-minifier#options-quick-reference">https://github.com/kangax/html-minifier#options-quick-reference</a>
+      </p>
+      <p>举几个例子</p>
+      <pre><code class="prettyprint" data-lang="javascript">
+        collapseWhitespace: true, // 合并空白符
+        conservativeCollapse: true, // 合并空白符时至少保留一个空格
+      </code></pre>
+      <p>如果模板文件中有不是合法HTML的内容，比如后端模板的占位符等，要添加到<code>customAttrSurround</code></p>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>版本控制与缓存更新</h2>
+    </hgroup>
+    <article>
+      <ul class="build">
+        <li>什么是版本控制</li>
+        <li>如何更新缓存</li>
+        <li>原来我们这么做<br>
+          http://xxx/yyy/a.css?20151210<br>
+          http://xxx/yyy/b.img?20151210<br>
+          http://xxx/yyy/c.js?20151210
+        </li>
+        <li>每一次上线更新config中的version，可以保证更新的文件不会因为缓存未失效没有重新获取</li>
+        <li>有哪些不足？</li>
+        <li>手工改，不自动化，容易出错和遗忘</li>
+        <li>每一次上线实际发生变更的文件在项目总的文件数中比例不会太大，比如20%，那么每次上线后其余80%原本没有更新的文件也会缓存失效，缓存的意义大大降低</li>
+      </ul>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>更好地更新缓存</h2>
+    </hgroup>
+    <article>
+      <p>比如我们有如下文件，a.html</p>
+      <pre><code class="prettyprint" data-lang="html">
+        &lt;link rel=stylesheet href=css/a/main.css&gt;
+        &lt;img src=img/a/a-1.png&gt;
+        &lt;img src=img/a/a-2.png&gt;
+        &lt;srcipt src=lib/require.js&gt;&lt;/script&gt;
+        &lt;script src="lib/require.config.js"&gt;&lt;/script&gt;
+
+        &lt;!-- build:js inline js/revved-paths.js --&gt;
+        &lt;!-- /build --&gt;
+
+        &lt;script&gt;
+          require(['a/main'])
+        &lt;/script&gt;
+      </code></pre>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>更好的更新缓存</h2>
+    </hgroup>
+    <article>
+      <ul>
+        <li>css/a.css 中引用 img/a/a-3.png、img/a/a-4.png</li>
+        <li>ks/a/main.js依赖于js/a/_services/a.js、js/a/_directives/a.js<br>
+          <pre><code class="prettyprint" data-lang="javascript">
+            define(['./_directives/a', './_services/a'], function() {})
+          </code></pre>
+        </li>
+      </ul>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>filerev</h2>
+    </hgroup>
+    <article class="build">
+      <p>根据文件内容生成相应的hash值，默认采用md5，同时收集文件的新旧名字映射表，因为md5算法的设计关系，我们只需要hash中很少的几位即可以确保文件内容无变化生成的hash相同，内容变更后生成的hash不同。</p>
+      <p>例如<br>
+      a-1.png -> a-1.abcd.png<br>
+      a-2.png -> a-2.efgh.png<br>
+      a-3.png -> a-3.ijkl.png<br>
+      a-4.png -> a-4.mnop.png<br>
+      main.css -> main.qrst.css(这里要注意！)<br>
+      main.js -> main.uvwx.js
+      </p>
+      <p>为什么css要注意？<p>
+      <p>因为img文件名的更新，会引起css中引用路径变化，使得css内容产生变化，即使sass源文件未作修改，最终css文件的hash也会更新，所以处理顺序上img一定要在css之前<p>
+      <p>同样的，如果js文件中有引用img文件，结果类似</p>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>usemin</h2>
+    </hgroup>
+    <article>
+      <p>usemin负责更新文件引用路径，结合filerev，更新后的a.html如下</p>
+
+      <pre><code class="prettyprint" data-lang="html">
+        &lt;link rel=stylesheet href=css/a/main.qrst.css&gt;
+        &lt;img src=img/a/a-1.abcd.png&gt;
+        &lt;img src=img/a/a-2.efgh.png&gt;
+        &lt;srcipt src=lib/require.js&gt;&lt;/script&gt;
+        &lt;script src="lib/require.config.js"&gt;&lt;/script&gt;
+
+        &lt;!-- build:js inline js/revved-paths.js --&gt;
+        &lt;!-- /build --&gt;
+
+        &lt;script&gt;
+          require(['a/main'])
+        &lt;/script&gt;
+      </code></pre>
+      <p>至此，除了js文件之外，img和css文件都做到了，根据文件内容是否变化来决定是否更新url，最终决定是否要让浏览器的缓存失效</p>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>js的路径处理--processhtml</h2>
+    </hgroup>
+    <article class="build">
+      <p>理论上，js的引用路径更新也可以用usemin来处理，但是js文件引用路径里没有后缀名“.js”，正则匹配很容易误伤其他的url</p>
+      <p>换个思路解决这个问题</p>
+      <p>require.js有几种方式可以重新指定模块名称和实际文件名称映射关系，这里我们用paths来做</p>
+      <pre><code class="prettyprint" data-lang="html">
+        &lt;!-- build:js inline js/revved-paths.js --&gt;
+        &lt;!-- /build --&gt;
+      </code></pre>
+      <p>这是为processhtml这个插件预留的占位符，开发环境就是一段注释，不会有任何影响。当我们构建的时候，根据前面filerev生成的新旧文件名映射表“js/revved-paths.js”，生成一份单独的js模块新旧名称映射表。</p>
+    </article>
+  </slide>
+  <slide>
+    <hgroup>
+      <h2>js的路径处理--processhtml</h2>
+    </hgroup>
+    <article>
+      <p>生成的js/revved-path.js内容如下
+        <pre><code class="prettyprint" data-lang="javascript">
+          require.config({
+            'a/main': 'a/main.uvwx'
+          })
+        </code></pre>
+      </p>
+      <p>经过processhtml插件处理之后，此文件内容会内联到上述占位符位置。实际上熟悉node的一些API就可以轻松地自行编程完成这个任务，自行取舍。</p>
+      <p>这样，任何原来依赖“a/main”这个模块的地方都能够正确的引用到改名后的js/a/main.uvwx.js这个文件</p>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>增量压缩图片</h2>
+    </hgroup>
+    <article class="build">
+      <p>想要每次imagemin处理时只处理新加的和修改的文件，前提是要统计出这些文件。</p>
+      <p>想一下上述根据文件内容生成hash的过程</p>
+      <p>依旧是利用filerev过程中收集到的新旧img文件名称映射表，遍历它的每一项同时检测dist/img中是否存在对应名称的img文件，如果没有，说明src/img中有新加的或者修改的img文件。</p>
+      <p>动态生成imagemin的option然后执行。</p>
+      <p>至此，可以依次更新其他文件中的img引用路径然后压缩css、js、html</p>
+      <p>还有很多...</p>
+    </article>
+  </slide>
+
+  <slide>
+    <hgroup>
+      <h2>辅助写代码的工具</h2>
+    </hgroup>
+    <article class="build">
+      <p>已经使用的有autoprefixer</p>
+      <p>autoprefixer代表着postcss这一个大方向</p>
+      <p>我们可以尝试什么</p>
+      <p>linter</p>
+      <p>formatter</p>
+      <p>ES6、TypeScript或者其他可编译到JS的语言</p>
+    </article>
+  </slide>
+
+  <slide class="backdrop"></slide>
+
+</slides>
+
+<script>
+var _gaq = _gaq || [];
+_gaq.push(['_setAccount', 'UA-XXXXXXXX-1']);
+_gaq.push(['_trackPageview']);
+
+(function() {
+  var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+})();
+</script>
+
+<!--[if IE]>
+  <script src="http://ajax.googleapis.com/ajax/libs/chrome-frame/1/CFInstall.min.js"></script>
+  <script>CFInstall.check({mode: 'overlay'});</script>
+<![endif]-->
+</body>
+</html>
